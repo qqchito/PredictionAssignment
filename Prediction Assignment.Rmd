@@ -1,0 +1,105 @@
+---
+title: "Prediction Assignment Writeup"
+author: "Claudio Torres Casanelli"
+date: "27-01-2021"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE, cache=FALSE, echo=FALSE}
+library(rmarkdown)
+library(rpart)
+library(caret)
+library(rattle)
+library(randomForest)
+
+```
+<br/><br/>
+
+## Introduction
+<br/>
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+<br/><br/>
+
+## Analysis of the data
+
+<br/>
+I now start loading the data from the csv files and store them in two variables: training and testing. 
+<br/>
+
+```{r}
+training <- read.csv("pml-training.csv", na.strings=c("NA", ""))
+training <- training[,colSums(is.na(training)) == 0]
+training <- training[, -c(1,2,3,4,5,6,7)]
+training$classe <- as.factor(training$classe)
+ncol(training)
+
+testing <- read.csv("pml-testing.csv", na.strings=c("NA", ""))
+testing <- testing[,colSums(is.na(testing)) == 0]
+testing <- testing[, -c(1,2,3,4,5,6,7)]
+ncol(testing)
+```
+
+<br/>
+Cross Validation: We subset the training data set into two and show the proportions of the classe variable for both subsets. The Tree below shows how balanced is the class according to what is on the full training dataset.
+<br/>
+
+```{r}
+set.seed(23125)
+
+prePCA <- preProcess(training,method="pca",thresh=.95)
+training <- predict(prePCA, training)
+testing <- predict(prePCA, testing)
+
+plot(as.factor(training$classe), main="Histogram distribution of Class in the training dataset", col="blue")
+
+ctrl <- trainControl(method = "cv", number = 5)
+cvmodel <- train(classe~., data = training, method = "rpart", trControl = ctrl)
+cvmodel$finalModel
+fancyRpartPlot(cvmodel$finalModel, main="Rpart Tree")
+```
+
+## Fitting a Model
+
+<br/>
+Here I generate models and train the training data set to choose a model to do the final predictions. No need to argue so much about the chosen model. Random Forest is the chosen one. Below is the evidence.
+<br/>
+
+```{r}
+TrainSelect <- createDataPartition(y=training$classe, p=0.8, list=FALSE)
+TrainSelectModel <- training[TrainSelect, ] 
+TestSelectModel <- training[-TrainSelect, ]
+
+modelRPART <- rpart(classe~., data=TrainSelectModel, method ="class")
+predRPART <- predict(modelRPART, TestSelectModel, type="class")
+confusionMatrix(predRPART, TestSelectModel$classe)
+fancyRpartPlot(modelRPART)
+
+
+modelRF <- randomForest(classe~., data=TrainSelectModel, method ="class")
+predRF <- predict(modelRF, TestSelectModel, type="class")
+
+confusionMatrix(predRF, TestSelectModel$classe)
+```
+
+<br/>
+Finally, now that we have chosen the Random Forest model, I am going to do the prediction on the original Testing data set.
+<br/>
+
+```{r}
+predTesting <- predict(modelRF, testing)
+plot(predTesting, col="green", main="Prediction on Testing dataset")
+```
+
+## Conclusions
+
+<br/>
+The prediction ressembles the original distribution of the data, so the desition of choosing the Random Forest algorithm was correct from my point of view. 
+<br/>

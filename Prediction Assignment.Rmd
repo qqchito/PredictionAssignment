@@ -3,10 +3,10 @@ title: "Prediction Assignment Writeup"
 author: "Claudio Torres Casanelli"
 date: "27-01-2021"
 output:
+  word_document: default
+  pdf_document: default
   html_document:
     df_print: paged
-  pdf_document: default
-  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -96,6 +96,7 @@ Finally, now that we have chosen the Random Forest model, I am going to do the p
 ```{r}
 predTesting <- predict(modelRF, testing)
 plot(predTesting, col="green", main="Prediction on Testing dataset")
+predTesting
 ```
 
 ## Conclusions
